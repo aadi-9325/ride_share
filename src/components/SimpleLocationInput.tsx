@@ -29,19 +29,26 @@ export function SimpleLocationInput({
   const { isLoaded, error } = useGoogleMaps()
 
   useEffect(() => {
-    if (isLoaded && inputRef.current && window.google && window.google.maps) {
-      const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current)
-      
-      autocomplete.addListener('place_changed', () => {
-        const place = autocomplete.getPlace()
-        if (place.geometry?.location) {
-          onChange(place.formatted_address || place.name || '')
-          onCoordsChange({
-            lat: place.geometry.location.lat(),
-            lng: place.geometry.location.lng()
-          })
-        }
-      })
+    // Ensure Places API is fully loaded before initializing Autocomplete
+    if (isLoaded && inputRef.current && window.google && window.google.maps && window.google.maps.places) {
+      try {
+        const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
+          fields: ['formatted_address', 'geometry', 'name']
+        })
+        
+        autocomplete.addListener('place_changed', () => {
+          const place = autocomplete.getPlace()
+          if (place.geometry?.location) {
+            onChange(place.formatted_address || place.name || '')
+            onCoordsChange({
+              lat: place.geometry.location.lat(),
+              lng: place.geometry.location.lng()
+            })
+          }
+        })
+      } catch (error) {
+        console.error('Error initializing Google Maps Autocomplete:', error)
+      }
     }
   }, [isLoaded, onChange, onCoordsChange])
 

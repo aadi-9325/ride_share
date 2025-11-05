@@ -4,8 +4,6 @@ declare global {
   interface Window {
     google: any
     initMap?: () => void
-    __googleMapsLoading?: boolean
-    __googleMapsLoaded?: boolean
   }
 }
 
@@ -15,6 +13,36 @@ let globalIsLoading = false
 let globalError: string | null = null
 const loadCallbacks: Array<() => void> = []
 const errorCallbacks: Array<(error: string) => void> = []
+
+// Helper function to check if Google Maps API is fully loaded including Places
+function isGoogleMapsFullyLoaded(): boolean {
+  return !!(
+    window.google &&
+    window.google.maps &&
+    window.google.maps.places &&
+    window.google.maps.places.Autocomplete &&
+    window.google.maps.Marker
+  )
+}
+
+// Helper function to wait for Google Maps Places API to be ready
+function waitForPlacesAPI(callback: () => void, errorCallback: (error: string) => void, attempts = 0) {
+  const maxAttempts = 50 // 5 seconds max wait (50 * 100ms)
+  
+  if (isGoogleMapsFullyLoaded()) {
+    callback()
+    return
+  }
+  
+  if (attempts >= maxAttempts) {
+    errorCallback('Timeout waiting for Google Maps Places API')
+    return
+  }
+  
+  setTimeout(() => {
+    waitForPlacesAPI(callback, errorCallback, attempts + 1)
+  }, 100)
+}
 
 export function useGoogleMaps() {
   const [isLoaded, setIsLoaded] = useState(globalIsLoaded)
@@ -33,8 +61,8 @@ export function useGoogleMaps() {
       return
     }
 
-    // Check if Google Maps API is already available in window
-    if (window.google && window.google.maps && window.google.maps.places) {
+    // Check if Google Maps API is already fully available
+    if (isGoogleMapsFullyLoaded()) {
       globalIsLoaded = true
       setIsLoaded(true)
       return
@@ -46,13 +74,22 @@ export function useGoogleMaps() {
     )
 
     if (existingScript) {
-      // Script exists, wait for it to load
-      if (window.google && window.google.maps) {
+      // Script exists, check if fully loaded or wait
+      if (isGoogleMapsFullyLoaded()) {
         globalIsLoaded = true
         setIsLoaded(true)
       } else {
-        // Register callback for when it loads
-        loadCallbacks.push(() => setIsLoaded(true))
+        // Register callback to wait for full loading
+        waitForPlacesAPI(
+          () => {
+            globalIsLoaded = true
+            setIsLoaded(true)
+          },
+          (err) => {
+            globalError = err
+            setError(err)
+          }
+        )
       }
       return
     }
@@ -84,18 +121,33 @@ export function useGoogleMaps() {
     script.id = 'google-maps-script'
 
     script.onload = () => {
-      globalIsLoaded = true
-      globalIsLoading = false
-      setIsLoaded(true)
-      
-      // Call all registered callbacks
-      loadCallbacks.forEach(cb => cb())
-      loadCallbacks.length = 0
-      errorCallbacks.length = 0
+      // Wait for Places API to be fully ready
+      waitForPlacesAPI(
+        () => {
+          globalIsLoaded = true
+          globalIsLoading = false
+          setIsLoaded(true)
+          
+          // Call all registered callbacks
+          loadCallbacks.forEach(cb => cb())
+          loadCallbacks.length = 0
+          errorCallbacks.length = 0
+        },
+        (err) => {
+          globalError = err
+          globalIsLoading = false
+          setError(err)
+          
+          // Call all error callbacks
+          errorCallbacks.forEach(cb => cb(err))
+          loadCallbacks.length = 0
+          errorCallbacks.length = 0
+        }
+      )
     }
 
     script.onerror = () => {
-      const errorMsg = 'Failed to load Google Maps API'
+      const errorMsg = 'Failed to load Google Maps API script'
       globalError = errorMsg
       globalIsLoading = false
       setError(errorMsg)
@@ -111,10 +163,10 @@ export function useGoogleMaps() {
     // Cleanup function
     return () => {
       // Remove this component's callbacks if component unmounts during loading
-      const loadIndex = loadCallbacks.indexOf(() => setIsLoaded(true))
+      const loadIndex = loadCallbacks.findIndex(cb => cb.toString() === (() => setIsLoaded(true)).toString())
       if (loadIndex > -1) loadCallbacks.splice(loadIndex, 1)
       
-      const errorIndex = errorCallbacks.indexOf((err) => setError(err))
+      const errorIndex = errorCallbacks.findIndex(cb => cb.toString() === ((err: string) => setError(err)).toString())
       if (errorIndex > -1) errorCallbacks.splice(errorIndex, 1)
     }
   }, [])
