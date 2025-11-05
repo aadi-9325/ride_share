@@ -81,6 +81,11 @@ export function RideBooking() {
       return
     }
 
+    if (!fareEstimate || !fareEstimate.costPerPerson) {
+      toast.error('Please calculate fare first')
+      return
+    }
+
     try {
       // Create a ride request
       const { data: ride, error } = await supabase
@@ -99,18 +104,26 @@ export function RideBooking() {
             address: destinationLocation
           },
           estimated_fare: fareEstimate.costPerPerson,
-          notes: `Vehicle: ${vehicleType}, Distance: ${estimatedDistance}km`
+          notes: `Vehicle: ${vehicleType}, Distance: ${estimatedDistance.toFixed(2)}km`
         })
         .select()
         .single()
 
-      if (error) throw error
+      if (error) {
+        console.error('Database error details:', error)
+        throw error
+      }
+
+      if (!ride) {
+        throw new Error('No ride data returned after insert')
+      }
 
       toast.success('Finding matches for your ride...')
       navigate(`/matching?rideId=${ride.id}`)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating ride:', error)
-      toast.error('Failed to create ride request')
+      const errorMessage = error?.message || error?.details || error?.hint || 'Failed to create ride request'
+      toast.error(errorMessage)
     }
   }
 
