@@ -66,6 +66,18 @@ export function UserMatching() {
   }
 
   const handleJoinRide = async (matchUserId: string) => {
+    // Validate UUID format before attempting database operation
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(matchUserId)) {
+      toast.error('Invalid user ID. This might be a demo user. Please try refreshing the search.')
+      return
+    }
+
+    if (!rideId || !uuidRegex.test(rideId)) {
+      toast.error('Invalid ride ID. Please try creating a new ride.')
+      return
+    }
+
     setJoining(true)
     try {
       // Add user as participant
@@ -80,7 +92,10 @@ export function UserMatching() {
           confirmed_at: new Date().toISOString()
         })
 
-      if (error) throw error
+      if (error) {
+        console.error('Database error details:', error)
+        throw error
+      }
 
       // Update ride status
       const { error: updateError } = await supabase
@@ -91,13 +106,27 @@ export function UserMatching() {
         })
         .eq('id', rideId!)
 
-      if (updateError) throw updateError
+      if (updateError) {
+        console.error('Update error details:', updateError)
+        throw updateError
+      }
 
       toast.success('Successfully joined the ride!')
       navigate(`/ride/${rideId}`)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error joining ride:', error)
-      toast.error('Failed to join ride')
+      
+      // Provide specific error messages
+      let errorMessage = 'Failed to join ride'
+      if (error?.code === '22P02') {
+        errorMessage = 'Invalid data format. Please try refreshing and searching again.'
+      } else if (error?.code === '23505') {
+        errorMessage = 'You have already joined this ride.'
+      } else if (error?.message) {
+        errorMessage = error.message
+      }
+      
+      toast.error(errorMessage)
     } finally {
       setJoining(false)
     }
