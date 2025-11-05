@@ -1,0 +1,80 @@
+{
+  "expo": {
+    "name": "RideShare Mobile",
+    "slug": "rideshare-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.rideshare.mobile",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Allow RideShare to access your camera for profile photos.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Allow RideShare to use your location for ride matching and tracking.",
+        "NSFaceIDUsageDescription": "Allow RideShare to use Face ID for secure authentication."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FFFFFF"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "CAMERA",
+        "RECORD_AUDIO",
+        "USE_BIOMETRIC",
+        "USE_FINGERPRINT"
+      ],
+      "package": "com.rideshare.mobile"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow RideShare to use your location for ride matching and tracking."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow RideShare to access your camera for profile photos."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#ffffff"
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIdPermission": "Allow RideShare to use Face ID for secure authentication."
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "rideshare-mobile-project"
+      }
+    }
+  }
+}
